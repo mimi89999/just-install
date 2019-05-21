@@ -1,48 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/just-install/just-install/pkg/fetch"
-
-	dry "github.com/ungerik/go-dry"
 	"github.com/urfave/cli"
-
-	"github.com/just-install/just-install/pkg/justinstall"
 )
 
 func handleAuditAction(c *cli.Context) {
-	expectedContentTypes := []string{
-		"application/exe",
-		"application/octet-stream",
-		"application/unknown", // Bintray
-		"application/x-dosexec",
-		"application/x-msdos-program",
-		"application/x-msdownload",
-		"application/x-msi",
-		"application/x-sdlc", // Oracle
-		"application/x-zip-compressed",
-		"application/zip",
-		"binary/octet-stream",
-		"Composite Document File V2 Document, corrupt: Can't read SAT; charset=binary", // Google Code
-		"text/x-python", // PIP
-		"Zip Files",
-		"application/x-ms-dos-executable", // OpenVPN
-		"exe",                             // VPN Unlimited
-		"",                                // PIA
-		"text/plain; charset=ISO-8859-1",  // LibreOffice
-		"text/html; charset=utf-8",        // SourceForge
-		"application/x-ole-storage",       // EpicGames
-		"application/x-troff-man",         // MSIs on OSDN
-		"application/x-executable",        // Notepad++
-	}
+	// expectedContentTypes := []string{
+	// 	"application/exe",
+	// 	"application/octet-stream",
+	// 	"application/unknown", // Bintray
+	// 	"application/x-dosexec",
+	// 	"application/x-msdos-program",
+	// 	"application/x-msdownload",
+	// 	"application/x-msi",
+	// 	"application/x-sdlc", // Oracle
+	// 	"application/x-zip-compressed",
+	// 	"application/zip",
+	// 	"binary/octet-stream",
+	// 	"Composite Document File V2 Document, corrupt: Can't read SAT; charset=binary", // Google Code
+	// 	"text/x-python", // PIP
+	// 	"Zip Files",
+	// 	"application/x-ms-dos-executable", // OpenVPN
+	// 	"exe",                             // VPN Unlimited
+	// 	"",                                // PIA
+	// 	"text/plain; charset=ISO-8859-1",  // LibreOffice
+	// 	"text/html; charset=utf-8",        // SourceForge
+	// 	"application/x-ole-storage",       // EpicGames
+	// 	"application/x-troff-man",         // MSIs on OSDN
+	// 	"application/x-executable",        // Notepad++
+	// }
 
 	// retry executes f, retrying a call with exponential back-off if it returns true as its first
 	// return value. Ends up returning the eventual error value after a maximum of three retries.
@@ -70,43 +62,44 @@ func handleAuditAction(c *cli.Context) {
 
 	checkLink := func(rawurl string) error {
 		return retry(func() (bool, error) {
-			// Policy: retry on server or transport error, fail immediately otherwise.
-			response, err := justinstall.CustomGet(rawurl, fetch.ConnectionPhaseTimeout)
-			if err != nil {
-				return true, err
-			}
-			defer response.Body.Close()
-
-			if response.StatusCode >= 500 && response.StatusCode < 600 {
-				return true, fmt.Errorf("%s: returned status code %v", rawurl, response.StatusCode)
-			}
-
-			if response.StatusCode != http.StatusOK {
-				if strings.Contains(response.Request.URL.Host, "freefilesync") || strings.Contains(response.Request.URL.Host, "mediafire") {
-					// mediafire is unpredictable
-					return true, nil
-				}
-				if strings.Contains(response.Request.URL.Host, "download.gimp.org") {
-					// gimp does funny stuff when trying to download from appveyor, but it works properly when actually using j-i
-					return true, nil
-				}
-				if strings.Contains(response.Request.URL.Host, "eithermouse.com") {
-					// same as above
-					return true, nil
-				}
-				return false, fmt.Errorf("%s: expected status code 200, got %v", rawurl, response.StatusCode)
-			}
-
-			contentType := response.Header.Get("Content-Type")
-
-			success := strings.HasSuffix(rawurl, ".vbox-extpack") && contentType == "text/plain"                     // VirtualBox Extension Pack has the wrong MIME type
-			success = success || strings.Contains(rawurl, "libreoffice") && contentType == "application/x-troff-man" // Some LibreOffice mirrors return the wrong MIME type
-			success = success || dry.StringInSlice(contentType, expectedContentTypes)
-			if !success {
-				return false, fmt.Errorf("%s: unexpected content type %q", rawurl, contentType)
-			}
-
 			return false, nil
+			// // Policy: retry on server or transport error, fail immediately otherwise.
+			// response, err := justinstall.CustomGet(rawurl, fetch.ConnectionPhaseTimeout)
+			// if err != nil {
+			// 	return true, err
+			// }
+			// defer response.Body.Close()
+
+			// if response.StatusCode >= 500 && response.StatusCode < 600 {
+			// 	return true, fmt.Errorf("%s: returned status code %v", rawurl, response.StatusCode)
+			// }
+
+			// if response.StatusCode != http.StatusOK {
+			// 	if strings.Contains(response.Request.URL.Host, "freefilesync") || strings.Contains(response.Request.URL.Host, "mediafire") {
+			// 		// mediafire is unpredictable
+			// 		return true, nil
+			// 	}
+			// 	if strings.Contains(response.Request.URL.Host, "download.gimp.org") {
+			// 		// gimp does funny stuff when trying to download from appveyor, but it works properly when actually using j-i
+			// 		return true, nil
+			// 	}
+			// 	if strings.Contains(response.Request.URL.Host, "eithermouse.com") {
+			// 		// same as above
+			// 		return true, nil
+			// 	}
+			// 	return false, fmt.Errorf("%s: expected status code 200, got %v", rawurl, response.StatusCode)
+			// }
+
+			// contentType := response.Header.Get("Content-Type")
+
+			// success := strings.HasSuffix(rawurl, ".vbox-extpack") && contentType == "text/plain"                     // VirtualBox Extension Pack has the wrong MIME type
+			// success = success || strings.Contains(rawurl, "libreoffice") && contentType == "application/x-troff-man" // Some LibreOffice mirrors return the wrong MIME type
+			// success = success || dry.StringInSlice(contentType, expectedContentTypes)
+			// if !success {
+			// 	return false, fmt.Errorf("%s: unexpected content type %q", rawurl, contentType)
+			// }
+
+			// return false, nil
 		})
 	}
 
