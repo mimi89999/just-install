@@ -14,6 +14,7 @@ import (
 
 	"github.com/just-install/just-install/pkg/cmd"
 	"github.com/just-install/just-install/pkg/installer"
+	"github.com/just-install/just-install/pkg/fetch"
 	dry "github.com/ungerik/go-dry"
 )
 
@@ -205,22 +206,21 @@ type RegistryEntry struct {
 
 // DownloadInstaller downloads the installer for the current entry in the temporary directory.
 func (e *RegistryEntry) DownloadInstaller(force bool) string {
-	options := e.Installer.options()
+	// options := e.Installer.options()
 
 	url, err := e.installerURL(arch)
 	if err != nil {
 		log.Fatalln("Cannot download installation package:", err)
 	}
 
-	log.Println(arch, "-", url)
+	log.Println(url)
 
-	if filename, ok := options["filename"]; ok {
-		return downloadTemp(url, filename.(string), force)
-	} else if ext, ok := options["extension"]; ok {
-		return downloadExt(url, ext.(string), force)
+	ret, err := fetch.Fetch(url, &fetch.Options{Destination: "/Users/lvillani/Downloads", Progress: true})
+	if err != nil {
+		log.Fatalln(err)
 	}
 
-	return downloadAutoExt(url, force)
+	return ret
 }
 
 // JustInstall will download and install the given registry entry. Setting `force` to true will
