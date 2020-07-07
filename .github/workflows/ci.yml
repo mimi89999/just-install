@@ -27,6 +27,10 @@ jobs:
           $env:Path = "$env:WIX\bin;$env:Path"
           go run make.go
 
+      - name: Test installs
+        run: |
+          .\just-install.exe 7zip bootnext
+
       - name: Prepare artifacts
         run: |
           mkdir artifacts
